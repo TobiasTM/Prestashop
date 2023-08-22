@@ -56,4 +56,4 @@ if html_content:
         file.write(html_content)
     print("El código HTML ha sido guardado en Codigo.txt.")
 else:
-    print("Hubo un error al intentar obtener el código HTML.")aaaa
+    print("Hubo un error al intentar obtener el código HTML.")
