@@ -38,49 +38,57 @@ def obtener_codigo_fuente_chrome(title):
 
 html_content = obtener_codigo_fuente_chrome(title)
 
+html_content = obtener_codigo_fuente_chrome(title)
+
+# Convertir el contenido HTML extraído en un objeto BeautifulSoup
+soup = BeautifulSoup(html_content, 'html.parser')
+
 def extract_information(soup):
+    # Para obtener la URL actual del pedido
+    script_content = soup.find('script', string=re.compile('psl_current_url'))
+    url_pattern = re.compile(r'psl_current_url = "(.*?)"')
+    match = url_pattern.search(script_content.string)
+    order_url = match.group(1) if match else 'N/A'
+
+    # Extraer detalles de los productos
     product_elements = soup.find_all(lambda tag: tag.name == "a" and "Número de referencia:" in tag.get_text())
-    data = []
 
-    # Buscar la URL en el contenido del soup
-    script_content = soup.find('script', text=re.compile('psl_current_url'))
-    if script_content:
-        url_match = re.search(r'psl_current_url = "(https://[^"]+)"', script_content.string)
-        order_url = url_match.group(1) if url_match else 'N/A'
-    else:
-        order_url = 'N/A'
-
+    detalle_data = []
     for product_element in product_elements:
         reference_parts = product_element.get_text().split('Número de referencia:')
         product_reference = reference_parts[1].strip() if len(reference_parts) > 1 else 'N/A'
 
-        # Usar find_next para navegar al siguiente elemento deseado
-        product_quantity = product_element.find_next('span', class_='product_quantity_show')
-        product_price = product_element.find_next('span', class_='product_price_show')
-        
-        order_info = soup.select_one('h1.page-title')
+        product_quantity_element = product_element.find_next('span', class_='product_quantity_show')
+        product_quantity = product_quantity_element.get_text().strip() if product_quantity_element else 'N/A'
 
-        data.append([
-            order_url,
-            product_reference,
-            product_quantity.get_text().strip() if product_quantity else 'N/A',
-            order_info.get_text().strip() if order_info else 'N/A',
-            product_price.get_text().strip() if product_price else 'N/A'
-        ])
-    return data
+        product_price_element = product_element.find_next('span', class_='product_price_show')
+        product_price = product_price_element.get_text().strip() if product_price_element else 'N/A'
+
+        detalle_data.append([product_reference, product_quantity, product_price])
+
+    # Extraer información del pedido
+    order_info_element = soup.select_one('h1.page-title')
+    order_info = order_info_element.get_text().strip() if order_info_element else 'N/A'
+
+    datos_data = [[order_info, product_quantity, order_url]]  # Repetimos product_quantity pues parece ser el requerimiento
+
+    return detalle_data, datos_data
+
+detalle, datos = extract_information(soup)
 
 
 
-if html_content:
-    soup = BeautifulSoup(html_content, 'html.parser')
-    extracted_data = extract_information(soup)
+# Escribir detalles en un archivo CSV
+with open('detalle.csv', 'w', encoding='utf-8', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Número de Referencia', 'Cantidad', 'Precio del Producto'])
+    writer.writerows(detalle)
 
-    with open('productos.csv', 'w', encoding='utf-8', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['URL del Pedido', 'Número de Referencia', 'Cantidad', 'Información del Pedido', 'Precio del Producto'])
-        writer.writerows(extracted_data)
+# Escribir datos en un archivo CSV
+with open('datos.csv', 'w', encoding='utf-8', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Información del Pedido', 'Cantidad', 'URL del Pedido'])
+    writer.writerows(datos)
 
-    print("La información ha sido guardada en productos.csv.")
-else:
-    print("Hubo un error al intentar obtener el código HTML.")
+print("La información ha sido guardada en detalle.csv y datos.csv.")
 
