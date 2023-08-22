@@ -6,6 +6,7 @@ import csv
 import tkinter as tk
 from tkinter import simpledialog
 import pyperclip  # Importa pyperclip
+import re
 
 def get_window_title():
     root = tk.Tk()
@@ -41,19 +42,26 @@ def extract_information(soup):
     product_elements = soup.find_all(lambda tag: tag.name == "a" and "Número de referencia:" in tag.get_text())
     data = []
 
-    for product_element in product_elements:
-        product_name_element = product_element.find('span', class_='productName')
-        product_name = product_name_element.get_text().strip() if product_name_element else 'N/A'
+    # Buscar la URL en el contenido del soup
+    script_content = soup.find('script', text=re.compile('psl_current_url'))
+    if script_content:
+        url_match = re.search(r'psl_current_url = "(https://[^"]+)"', script_content.string)
+        order_url = url_match.group(1) if url_match else 'N/A'
+    else:
+        order_url = 'N/A'
 
+    for product_element in product_elements:
         reference_parts = product_element.get_text().split('Número de referencia:')
         product_reference = reference_parts[1].strip() if len(reference_parts) > 1 else 'N/A'
 
-        product_quantity = soup.select_one('span.product_quantity_show.badge')
+        # Usar find_next para navegar al siguiente elemento deseado
+        product_quantity = product_element.find_next('span', class_='product_quantity_show')
+        product_price = product_element.find_next('span', class_='product_price_show')
+        
         order_info = soup.select_one('h1.page-title')
-        product_price = soup.select_one('span.product_price_show')
 
         data.append([
-            product_name,
+            order_url,
             product_reference,
             product_quantity.get_text().strip() if product_quantity else 'N/A',
             order_info.get_text().strip() if order_info else 'N/A',
@@ -61,15 +69,18 @@ def extract_information(soup):
         ])
     return data
 
+
+
 if html_content:
     soup = BeautifulSoup(html_content, 'html.parser')
     extracted_data = extract_information(soup)
 
     with open('productos.csv', 'w', encoding='utf-8', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Nombre del Producto', 'Número de Referencia', 'Cantidad', 'Información del Pedido', 'Precio del Producto'])
+        writer.writerow(['URL del Pedido', 'Número de Referencia', 'Cantidad', 'Información del Pedido', 'Precio del Producto'])
         writer.writerows(extracted_data)
 
     print("La información ha sido guardada en productos.csv.")
 else:
     print("Hubo un error al intentar obtener el código HTML.")
+
