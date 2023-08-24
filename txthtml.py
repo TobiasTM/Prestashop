@@ -71,6 +71,12 @@ html_content = obtener_codigo_fuente_chrome(title)
 # Convertir el contenido HTML extraído en un objeto BeautifulSoup
 soup = BeautifulSoup(html_content, 'html.parser')
 
+def clean_price(price_text):
+    price_text = price_text.replace(" ARS", "")  # Elimina la moneda
+    price_text = price_text.replace(".", "")  # Elimina los puntos
+    return price_text
+
+
 def extract_information(soup):
     # Para obtener la URL actual del pedido
     script_content = soup.find('script', string=re.compile('psl_current_url'))
@@ -94,9 +100,13 @@ def extract_information(soup):
         product_quantity = product_quantity_element.get_text().strip() if product_quantity_element else 'N/A'
 
         product_price_element = product_element.find_next('span', class_='product_price_show')
-        product_price = product_price_element.get_text().strip() if product_price_element else 'N/A'
+        if product_price_element:
+            raw_price = product_price_element.get_text().strip()
+            clean_product_price = clean_price(raw_price)  # Llamada a clean_price para limpiar el formato del precio
+        else:
+            clean_product_price = 'N/A'
 
-        detalle_data.append([product_reference, product_quantity, product_price])
+        detalle_data.append([product_reference, product_quantity, clean_product_price])
                 # Sumar la cantidad al total (asegurándose de que sea un número)
         if product_quantity != 'N/A':
             total_quantity += int(product_quantity)
