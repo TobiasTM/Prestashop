@@ -10,8 +10,9 @@ import re
 
 def get_window_title():
     def on_ok():
-        nonlocal pedido
-        pedido = entry.get()
+        nonlocal pedido, custom_id
+        pedido = entry_pedido.get()
+        custom_id = entry_id.get()
         root.destroy()
 
     def center_window(w=300, h=200):
@@ -23,25 +24,30 @@ def get_window_title():
         y = (hs/2) - (h/2)
         root.geometry('%dx%d+%d+%d' % (w, h, x, y))
 
+    custom_id = None
     pedido = None
     root = tk.Tk()
-    center_window(400, 150)  # Centra la ventana en la pantalla
+    center_window(500, 250)  # Centra la ventana en la pantalla
     root.title('Ingreso de pedido')
 
     tk.Label(root, text="Ingrese el número del pedido:", font=("Arial", 14, 'bold')).pack(pady=10)
-    entry = tk.Entry(root, width=50, justify='center')
-    entry.pack()
+    entry_pedido = tk.Entry(root, width=50, justify='center')
+    entry_pedido.pack(pady=5)
+
+    tk.Label(root, text="Ingrese el ID personalizado:", font=("Arial", 14, 'bold')).pack(pady=10)
+    entry_id = tk.Entry(root, width=50, justify='center')
+    entry_id.pack(pady=5)
 
     tk.Button(root, text="OK", command=on_ok).pack(pady=10)
     
     root.mainloop()
 
     if pedido:
-        return f"Pedidos > {pedido} • Todomicro"
+        return f"Pedidos > {pedido} • Todomicro", custom_id
     else:
-        return None
+        return None, None
 
-title = get_window_title()
+title, custom_id = get_window_title()
 
 def obtener_codigo_fuente_chrome(title):
     chrome_windows = gw.getWindowsWithTitle(title)
@@ -68,9 +74,12 @@ soup = BeautifulSoup(html_content, 'html.parser')
 def extract_information(soup):
     # Para obtener la URL actual del pedido
     script_content = soup.find('script', string=re.compile('psl_current_url'))
-    url_pattern = re.compile(r'psl_current_url = "(.*?)"')
-    match = url_pattern.search(script_content.string)
-    order_url = match.group(1) if match else 'N/A'
+    if script_content is not None:
+        url_pattern = re.compile(r'psl_current_url = "(.*?)"')
+        match = url_pattern.search(script_content.string)
+        order_url = match.group(1) if match else 'N/A'
+    else:
+        order_url = 'N/A'
 
     # Extraer detalles de los productos
     product_elements = soup.find_all(lambda tag: tag.name == "a" and "Número de referencia:" in tag.get_text())
@@ -105,7 +114,7 @@ def extract_information(soup):
         order_number = 'N/A'
         recipient_name = 'N/A'
 
-    datos_data = [[order_number, total_quantity, order_url, recipient_name]]  # Usar total_quantity aquí
+    datos_data = [[custom_id, order_number, total_quantity, order_url, recipient_name]]
 
     return detalle_data, datos_data
 
@@ -130,7 +139,7 @@ datos_filename = f"{order_number} DATOS.csv"
 # Escribir datos en el archivo CSV
 with open(datos_filename, 'w', encoding='utf-8', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(['Información del Pedido', 'Cantidad', 'URL del Pedido', 'Destinatario'])
+    writer.writerow(['ID', 'Información del Pedido', 'Cantidad', 'URL del Pedido', 'Destinatario'])
     writer.writerows(datos)
 
 print(f"La información ha sido guardada en {detalle_filename} y {datos_filename}.")
