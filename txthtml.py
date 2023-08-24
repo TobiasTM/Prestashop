@@ -70,9 +70,19 @@ def extract_information(soup):
     order_info_element = soup.select_one('h1.page-title')
     order_info = order_info_element.get_text().strip() if order_info_element else 'N/A'
 
-    datos_data = [[order_info, product_quantity, order_url]]  # Repetimos product_quantity pues parece ser el requerimiento
+    # Separar el número de pedido y el nombre del destinatario
+    info_parts = re.search(r"Pedido TM00(\d+) de (.+)", order_info)
+    if info_parts:
+        order_number = info_parts.group(1)  # Guardar solo el número sin el prefijo "TM00"
+        recipient_name = info_parts.group(2)  # Guardar el nombre del destinatario
+    else:
+        order_number = 'N/A'
+        recipient_name = 'N/A'
+
+    datos_data = [[order_number, product_quantity, order_url, recipient_name]]
 
     return detalle_data, datos_data
+
 
 detalle, datos = extract_information(soup)
 
@@ -84,11 +94,9 @@ with open('detalle.csv', 'w', encoding='utf-8', newline='') as file:
     writer.writerow(['Número de Referencia', 'Cantidad', 'Precio del Producto'])
     writer.writerows(detalle)
 
-# Escribir datos en un archivo CSV
 with open('datos.csv', 'w', encoding='utf-8', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow(['Información del Pedido', 'Cantidad', 'URL del Pedido'])
+    writer.writerow(['Información del Pedido', 'Cantidad', 'URL del Pedido', 'Destinatario'])  # Agregada una nueva columna "Destinatario"
     writer.writerows(datos)
 
 print("La información ha sido guardada en detalle.csv y datos.csv.")
-
