@@ -9,9 +9,33 @@ import pyperclip  # Importa pyperclip
 import re
 
 def get_window_title():
+    def on_ok():
+        nonlocal pedido
+        pedido = entry.get()
+        root.destroy()
+
+    def center_window(w=300, h=200):
+        # Obtiene las dimensiones de la pantalla
+        ws = root.winfo_screenwidth()
+        hs = root.winfo_screenheight()
+        # Calcula la posición x, y
+        x = (ws/2) - (w/2)
+        y = (hs/2) - (h/2)
+        root.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
+    pedido = None
     root = tk.Tk()
-    root.withdraw() 
-    pedido = simpledialog.askstring("Pedido", "Ingrese el número del pedido:")
+    center_window(400, 150)  # Centra la ventana en la pantalla
+    root.title('Ingreso de pedido')
+
+    tk.Label(root, text="Ingrese el número del pedido:", font=("Arial", 14, 'bold')).pack(pady=10)
+    entry = tk.Entry(root, width=50, justify='center')
+    entry.pack()
+
+    tk.Button(root, text="OK", command=on_ok).pack(pady=10)
+    
+    root.mainloop()
+
     if pedido:
         return f"Pedidos > {pedido} • Todomicro"
     else:
