@@ -26,4 +26,8 @@ El código sigue estos pasos:
 
 4-tener la ventana del pedido abierta.
 
+<<<<<<< HEAD
 Los archivos CSV generados estarán en el mismo directorio que el script y llevarán el número del pedido en sus nombres para fácil identificación.
+=======
+Los archivos CSV generados estarán en el mismo directorio que el script y llevarán el número del pedido en sus nombres para fácil identificación.
+>>>>>>> 6e9e5277cc23876ba49895f2dcfa594eeb8ead91
