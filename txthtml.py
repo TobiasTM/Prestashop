@@ -67,10 +67,6 @@ def extract_information(soup):
                 # Sumar la cantidad al total (asegurándose de que sea un número)
         if product_quantity != 'N/A':
             total_quantity += int(product_quantity)
-        
-        detalle_data.append([product_reference, product_quantity, product_price])
-        
-        
 
     # Extraer información del pedido
     order_info_element = soup.select_one('h1.page-title')
