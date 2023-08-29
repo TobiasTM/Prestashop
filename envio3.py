@@ -17,7 +17,6 @@ credentials_json = {
     "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/api-prueba%40api-prueba-387019.iam.gserviceaccount.com",
     "universe_domain": "googleapis.com"
 }
-
 # Inicializa la API de Google Sheets
 scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 credentials = Credentials.from_service_account_info(credentials_json, scopes=scopes)
@@ -25,13 +24,16 @@ credentials = Credentials.from_service_account_info(credentials_json, scopes=sco
 service = build('sheets', 'v4', credentials=credentials)
 sheet = service.spreadsheets()
 
-# ID de tu Google Sheet
-SPREADSHEET_ID = '1df1tKhQZBqJAqL1lrQr-TEKh_FjEwk7NStyGpPu-fUo'
+# ID de tus Google Sheets
+SPREADSHEET_ID1 = '1df1tKhQZBqJAqL1lrQr-TEKh_FjEwk7NStyGpPu-fUo'
+SPREADSHEET_ID2 = '1eoVpyO0IlAvV1DymRq7tMHvkN7s5T2BUoBdVFw1pxUc'
 
-# Obtener el nombre de la primera hoja (índice 0)
-spreadsheet = sheet.get(spreadsheetId=SPREADSHEET_ID).execute()
-sheet_name = spreadsheet['sheets'][0]['properties']['title']
+# Obtener los nombres de las hojas
+spreadsheet1 = sheet.get(spreadsheetId=SPREADSHEET_ID1).execute()
+sheet_name1 = spreadsheet1['sheets'][0]['properties']['title']
 
+spreadsheet2 = sheet.get(spreadsheetId=SPREADSHEET_ID2).execute()
+sheet_name2 = spreadsheet2['sheets'][3]['properties']['title']
 # Busca archivos CSV en la carpeta actual
 for filename in os.listdir('.'):
     if filename.endswith(" DATOS.csv"):
@@ -43,8 +45,8 @@ for filename in os.listdir('.'):
             file_id = data[1][0]  # Asume que el ID está en la segunda fila de la columna A
             
             # Busca el ID en la columna A de la primera hoja
-            result = sheet.values().get(spreadsheetId=SPREADSHEET_ID,
-                                        range=f"{sheet_name}!A:A").execute()
+            result = sheet.values().get(spreadsheetId=SPREADSHEET_ID1,
+                                        range=f"{sheet_name1}!A:A").execute()
             values = result.get('values', [])
             
             row_number = None
@@ -64,20 +66,44 @@ for filename in os.listdir('.'):
                     ]
                     
                     # Actualiza las celdas D, E, F, L en la primera hoja
-                    update_range = f"{sheet_name}!D{row_number+i}:F{row_number+i}"
+                    update_range = f"{sheet_name1}!D{row_number+i}:F{row_number+i}"
                     sheet.values().update(
-                        spreadsheetId=SPREADSHEET_ID,
+                        spreadsheetId=SPREADSHEET_ID1,
                         range=update_range,
                         body={"values": [update_data[:3]]},
                         valueInputOption="RAW"
                     ).execute()
                     
-                    update_range = f"{sheet_name}!L{row_number+i}"
+                    update_range = f"{sheet_name1}!L{row_number+i}"
                     sheet.values().update(
-                        spreadsheetId=SPREADSHEET_ID,
+                        spreadsheetId=SPREADSHEET_ID1,
                         range=update_range,
                         body={"values": [[update_data[3]]]},
                         valueInputOption="RAW"
                     ).execute()
                     
                 print(f"Datos actualizados para el ID {file_id}.")
+# Busca archivos CSV en la carpeta actual que terminan en " detalles.csv"
+for filename in os.listdir('.'):
+    if filename.endswith("DETALLES.csv"):
+        print(f"Procesando archivo de detalles: {filename}")
+        
+        with open(filename, newline='') as f:
+            reader = csv.reader(f)
+            data = list(reader)[1:]  # Ignora la primera fila
+            
+            # Elimina los datos existentes en las columnas A, B, C (excepto la primera fila)
+            sheet.values().clear(
+                spreadsheetId=SPREADSHEET_ID2,
+                range=f"{sheet_name2}!A2:C"
+            ).execute()
+            
+            # Envía los nuevos datos a las columnas A, B, C
+            sheet.values().update(
+                spreadsheetId=SPREADSHEET_ID2,
+                range=f"{sheet_name2}!A2",
+                body={"values": data},
+                valueInputOption="RAW"
+            ).execute()
+            
+            print(f"Datos de detalles actualizados para el archivo {filename}.")
