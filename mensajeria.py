@@ -396,19 +396,32 @@ import csv
 import qrcode
 
 def fetch_locations_from_sheet(spreadsheet_id):
-    sheet_name = 'Ubicacion' 
+    sheet_name = 'Ubicacion'
     result = sheet.values().get(spreadsheetId=spreadsheet_id,
-                                range=f"{sheet_name}!A2:C1000").execute()
+                                range=f"{sheet_name}!A2:C").execute()
     values = result.get('values', [])
     
     location_dict = {}
     for row in values:
-        ref = row[0]
-        loc1 = row[1] if len(row) > 1 else 'N/A'
-        loc2 = row[2] if len(row) > 2 else 'N/A'
+        ref = row[0].strip().lower()  # Eliminar espacios y convertir a minúsculas
+        loc1 = row[1].strip() if len(row) > 1 else 'N/A'
+        loc2 = row[2].strip() if len(row) > 2 else 'N/A'
         location_dict[ref] = (loc1, loc2)
         
     return location_dict
+
+def find_location(reference, locations):
+    # Primera búsqueda: coincidencia exacta
+    ref = reference.strip().lower()
+    if ref in locations:
+        return locations[ref]
+    
+    # Segunda búsqueda: más exhaustiva
+    for key in locations.keys():
+        if ref in key:
+            return locations[key]
+    
+    return ('N/A', 'N/A')
 
 # Leer los datos de envío desde un archivo CSV
 def read_shipping_data(filename):
@@ -471,17 +484,33 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     y_position -= 20
     c.drawString(100, y_position, f"País: {shipping_data[0][4]}")
 
-    # Detalles del producto (debajo de los detalles del envío)
     y_position -= 40
     c.drawString(100, y_position, "Detalles del Producto:")
     y_position -= 20
     for item in detalle:
         reference = item[0]
-        location = locations.get(reference, ('N/A', 'N/A'))  # Obtener la ubicación del mapa
+        location = find_location(reference, locations)  # Usar la nueva función de búsqueda
+
+
+        # Intenta buscar de nuevo si la ubicación es 'N/A'
+        if location == ('N/A', 'N/A'):
+            # Aquí podrías intentar buscar de nuevo la ubicación
+            # Por ejemplo, podrías llamar a una función que busque en otra hoja o en otra fuente de datos
+            location = second_attempt_to_find_location(reference)
+
         c.drawString(100, y_position, f"Referencia: {reference}, Cantidad: {item[1]}, Ubicación: {location[0]} y {location[1]}")
         y_position -= 20
 
     c.save()
+
+    # Eliminar el archivo temporal de la imagen QR
+    os.remove("temp_qr.png")
+
+# Puedes definir esta función para hacer una segunda búsqueda
+def second_attempt_to_find_location(reference):
+    # Aquí podrías intentar buscar de nuevo la ubicación
+    # Por ejemplo, podrías llamar a una función que busque en otra hoja o en otra fuente de datos
+    return ('N/A', 'N/A')  # Devuelve 'N/A' si no se encuentra
 
     # Eliminar el archivo temporal de la imagen QR
     os.remove("temp_qr.png")
