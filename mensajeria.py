@@ -387,6 +387,32 @@ for filename in os.listdir('.'):
             
             print(f"Datos de detalles actualizados para el archivo {filename}.")
 
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.graphics.barcode import code128
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import csv
+
+# Asume que 'sheet' es tu cliente de Google Sheets ya autenticado
+# y que 'SPREADSHEET_ID2' es el ID de la hoja de cálculo que contiene la hoja "Ubicación"
+
+def fetch_locations_from_sheet(spreadsheet_id):
+    sheet_name = 'Ubicacion'  # Asegúrate de que este nombre coincida con el nombre de la hoja en Google Sheets
+    result = sheet.values().get(spreadsheetId=spreadsheet_id,
+                                range=f"{sheet_name}!A2:C1000").execute()
+    values = result.get('values', [])
+    
+    location_dict = {}
+    for row in values:
+        ref = row[0]
+        loc1 = row[1] if len(row) > 1 else 'N/A'
+        loc2 = row[2] if len(row) > 2 else 'N/A'
+        location_dict[ref] = (loc1, loc2)
+        
+    return location_dict
+
+# Leer los datos de envío desde un archivo CSV
 def read_shipping_data(filename):
     with open(filename, 'r', encoding='utf-8') as file:
         reader = csv.reader(file)
@@ -394,7 +420,8 @@ def read_shipping_data(filename):
         data = [row for row in reader]
     return data
 
-def generate_shipping_label(order_number, datos, detalle, shipping_data):
+# Generar la etiqueta de envío en PDF
+def generate_shipping_label(order_number, datos, detalle, shipping_data, locations):
     c = canvas.Canvas(f"{order_number}_etiqueta_envio.pdf", pagesize=letter)
     width, height = letter
     c.drawString(100, height - 100, f"Etiqueta de Envio para Pedido {order_number}")
@@ -414,7 +441,9 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data):
     c.drawString(100, height - 320, "Detalles del Producto:")
     y_position = height - 340
     for item in detalle:
-        c.drawString(100, y_position, f"Referencia: {item[0]}, Cantidad: {item[1]}, Precio: {item[2]}")
+        reference = item[0]
+        location = locations.get(reference, ('N/A', 'N/A'))  # Obtener la ubicación del mapa
+        c.drawString(100, y_position, f"Referencia: {reference}, Cantidad: {item[1]}, Ubicación: {location[0]} y {location[1]}")
         y_position -= 20
 
     # Aquí podrías agregar los datos de envío si lo deseas
@@ -430,6 +459,12 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data):
     c.drawString(100, y_position, f"País: {shipping_data[0][4]}")
 
     c.save()
-    # Generar etiqueta de envío
+
+# Obtener las ubicaciones de los productos desde Google Sheets
+locations = fetch_locations_from_sheet(SPREADSHEET_ID2)
+
+# Leer los datos de envío desde un archivo CSV
 shipping_data = read_shipping_data("datos_de_envio.csv")
-generate_shipping_label(order_number, datos, detalle, shipping_data)
+
+# Generar la etiqueta de envío
+generate_shipping_label(order_number, datos, detalle, shipping_data, locations)
