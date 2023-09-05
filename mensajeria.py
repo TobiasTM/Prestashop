@@ -393,12 +393,10 @@ from reportlab.graphics.barcode import code128
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import csv
-
-# Asume que 'sheet' es tu cliente de Google Sheets ya autenticado
-# y que 'SPREADSHEET_ID2' es el ID de la hoja de cálculo que contiene la hoja "Ubicación"
+import qrcode
 
 def fetch_locations_from_sheet(spreadsheet_id):
-    sheet_name = 'Ubicacion'  # Asegúrate de que este nombre coincida con el nombre de la hoja en Google Sheets
+    sheet_name = 'Ubicacion' 
     result = sheet.values().get(spreadsheetId=spreadsheet_id,
                                 range=f"{sheet_name}!A2:C1000").execute()
     values = result.get('values', [])
@@ -420,34 +418,51 @@ def read_shipping_data(filename):
         data = [row for row in reader]
     return data
 
-# Generar la etiqueta de envío en PDF
+
+from PIL import Image
+
 def generate_shipping_label(order_number, datos, detalle, shipping_data, locations):
     c = canvas.Canvas(f"{order_number}_etiqueta_envio.pdf", pagesize=letter)
     width, height = letter
-    c.drawString(100, height - 100, f"Etiqueta de Envio para Pedido {order_number}")
 
-    # Generar código de barras
-    barcode = code128.Code128(str(order_number), barHeight=0.5*inch, barWidth=1.2)
-    barcode.drawOn(c, 100, height - 150)
+    # Encabezado
+    c.setFont("Helvetica-Bold", 28)
+    c.drawCentredString(width / 2.0, height - 50, "TODOMICRO")  # Ajusta la posición vertical aquí
 
-    # Agregar datos extraídos
+    # Generar código QR
+    qr_code = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    # Aquí, uso 'order_number' directamente para que el QR contenga solo ese número.
+    qr_code.add_data(str(order_number))
+    qr_code.make(fit=True)
+    img = qr_code.make_image(fill_color="black", back_color="white")
+
+    # Guardar la imagen QR en un archivo temporal
+    img.save("temp_qr.png")
+
+    # Dibuja la imagen QR directamente en el canvas del PDF
+    c.drawImage("temp_qr.png", width / 2 - 50, height - 180, 100, 100)  # Ajusta la posición aquí
+
+    # Extraer el número de pedido de 'Información del Pedido'
+    pedido = datos[0][1].split(": ")[1] if ": " in datos[0][1] else datos[0][1]
+
+
+
+    # Datos del pedido (lado izquierdo)
+    c.setFont("Helvetica", 12)
     c.drawString(100, height - 200, f"ID: {datos[0][0]}")
     c.drawString(100, height - 220, f"Información del Pedido: {datos[0][1]}")
     c.drawString(100, height - 240, f"Cantidad: {datos[0][2]}")
     c.drawString(100, height - 260, f"URL del Pedido: {datos[0][3]}")
     c.drawString(100, height - 280, f"Destinatario: {datos[0][4]}")
 
-    # Agregar detalles del producto
-    c.drawString(100, height - 320, "Detalles del Producto:")
+    # Cuerpo
+    # Detalles del envío (lado izquierdo)
     y_position = height - 340
-    for item in detalle:
-        reference = item[0]
-        location = locations.get(reference, ('N/A', 'N/A'))  # Obtener la ubicación del mapa
-        c.drawString(100, y_position, f"Referencia: {reference}, Cantidad: {item[1]}, Ubicación: {location[0]} y {location[1]}")
-        y_position -= 20
-
-    # Aquí podrías agregar los datos de envío si lo deseas
-    y_position -= 40
     c.drawString(100, y_position, f"Domicilio: {shipping_data[0][0]}")
     y_position -= 20
     c.drawString(100, y_position, f"CP: {shipping_data[0][1]}")
@@ -458,7 +473,20 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     y_position -= 20
     c.drawString(100, y_position, f"País: {shipping_data[0][4]}")
 
+    # Detalles del producto (debajo de los detalles del envío)
+    y_position -= 40
+    c.drawString(100, y_position, "Detalles del Producto:")
+    y_position -= 20
+    for item in detalle:
+        reference = item[0]
+        location = locations.get(reference, ('N/A', 'N/A'))  # Obtener la ubicación del mapa
+        c.drawString(100, y_position, f"Referencia: {reference}, Cantidad: {item[1]}, Ubicación: {location[0]} y {location[1]}")
+        y_position -= 20
+
     c.save()
+
+    # Eliminar el archivo temporal de la imagen QR
+    os.remove("temp_qr.png")
 
 # Obtener las ubicaciones de los productos desde Google Sheets
 locations = fetch_locations_from_sheet(SPREADSHEET_ID2)
