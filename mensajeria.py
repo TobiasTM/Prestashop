@@ -11,6 +11,19 @@ import csv
 import os
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.graphics.barcode import code128
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import portrait
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.units import inch, cm
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+
 
 # Tus credenciales aquí como un diccionario de Python
 credentials_json = {
@@ -192,6 +205,7 @@ if html_content:
                     if not file_exists:
                         writer.writerow(["Domicilio", "CP", "Localidad", "Ciudad", "País"])
                     writer.writerow([domicilio.strip(), cp.strip(), localidad.strip(), ciudad.strip(), pais.strip()])
+
 else:
     print("No se pudo obtener el contenido HTML.")
 
@@ -372,3 +386,50 @@ for filename in os.listdir('.'):
             ).execute()
             
             print(f"Datos de detalles actualizados para el archivo {filename}.")
+
+def read_shipping_data(filename):
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        headers = next(reader)  # Saltar la fila de encabezados
+        data = [row for row in reader]
+    return data
+
+def generate_shipping_label(order_number, datos, detalle, shipping_data):
+    c = canvas.Canvas(f"{order_number}_etiqueta_envio.pdf", pagesize=letter)
+    width, height = letter
+    c.drawString(100, height - 100, f"Etiqueta de Envio para Pedido {order_number}")
+
+    # Generar código de barras
+    barcode = code128.Code128(str(order_number), barHeight=0.5*inch, barWidth=1.2)
+    barcode.drawOn(c, 100, height - 150)
+
+    # Agregar datos extraídos
+    c.drawString(100, height - 200, f"ID: {datos[0][0]}")
+    c.drawString(100, height - 220, f"Información del Pedido: {datos[0][1]}")
+    c.drawString(100, height - 240, f"Cantidad: {datos[0][2]}")
+    c.drawString(100, height - 260, f"URL del Pedido: {datos[0][3]}")
+    c.drawString(100, height - 280, f"Destinatario: {datos[0][4]}")
+
+    # Agregar detalles del producto
+    c.drawString(100, height - 320, "Detalles del Producto:")
+    y_position = height - 340
+    for item in detalle:
+        c.drawString(100, y_position, f"Referencia: {item[0]}, Cantidad: {item[1]}, Precio: {item[2]}")
+        y_position -= 20
+
+    # Aquí podrías agregar los datos de envío si lo deseas
+    y_position -= 40
+    c.drawString(100, y_position, f"Domicilio: {shipping_data[0][0]}")
+    y_position -= 20
+    c.drawString(100, y_position, f"CP: {shipping_data[0][1]}")
+    y_position -= 20
+    c.drawString(100, y_position, f"Localidad: {shipping_data[0][2]}")
+    y_position -= 20
+    c.drawString(100, y_position, f"Ciudad: {shipping_data[0][3]}")
+    y_position -= 20
+    c.drawString(100, y_position, f"País: {shipping_data[0][4]}")
+
+    c.save()
+    # Generar etiqueta de envío
+shipping_data = read_shipping_data("datos_de_envio.csv")
+generate_shipping_label(order_number, datos, detalle, shipping_data)
