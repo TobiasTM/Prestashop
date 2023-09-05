@@ -429,6 +429,14 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     c.setFont("Helvetica-Bold", 28)
     c.drawCentredString(width / 2.0, height - 50, "TODOMICRO")  # Ajusta la posición vertical aquí
 
+    # Datos del pedido (lado izquierdo)
+    c.setFont("Helvetica", 12)
+    c.drawString(100, height - 200, f"ID: {datos[0][0]}")
+    c.drawString(100, height - 220, f"Información del Pedido: {datos[0][1]}")
+    c.drawString(100, height - 240, f"Cantidad: {datos[0][2]}")
+    c.drawString(100, height - 260, f"URL del Pedido: {datos[0][3]}")
+    c.drawString(100, height - 280, f"Destinatario: {datos[0][4]}")
+
     # Generar código QR
     qr_code = qrcode.QRCode(
         version=1,
@@ -437,7 +445,7 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
         border=4,
     )
     # Aquí, uso 'order_number' directamente para que el QR contenga solo ese número.
-    qr_code.add_data(str(order_number))
+    qr_code.add_data(str({datos[0][1]}))
     qr_code.make(fit=True)
     img = qr_code.make_image(fill_color="black", back_color="white")
 
@@ -449,16 +457,6 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
 
     # Extraer el número de pedido de 'Información del Pedido'
     pedido = datos[0][1].split(": ")[1] if ": " in datos[0][1] else datos[0][1]
-
-
-
-    # Datos del pedido (lado izquierdo)
-    c.setFont("Helvetica", 12)
-    c.drawString(100, height - 200, f"ID: {datos[0][0]}")
-    c.drawString(100, height - 220, f"Información del Pedido: {datos[0][1]}")
-    c.drawString(100, height - 240, f"Cantidad: {datos[0][2]}")
-    c.drawString(100, height - 260, f"URL del Pedido: {datos[0][3]}")
-    c.drawString(100, height - 280, f"Destinatario: {datos[0][4]}")
 
     # Cuerpo
     # Detalles del envío (lado izquierdo)
