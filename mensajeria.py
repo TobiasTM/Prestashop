@@ -4,6 +4,7 @@ import pyautogui
 import time
 import csv
 import tkinter as tk
+from tkinter import ttk
 from tkinter import simpledialog
 import pyperclip  # Importa pyperclip
 import re
@@ -46,26 +47,27 @@ credentials = Credentials.from_service_account_info(credentials_json, scopes=sco
 service = build('sheets', 'v4', credentials=credentials)
 sheet = service.spreadsheets()
 
+
 def get_window_title():
     def on_ok():
-        nonlocal pedido, custom_id
+        nonlocal pedido, custom_id, mensajeria
         pedido = entry_pedido.get()
         custom_id = entry_id.get()
+        mensajeria = combobox.get()
         root.destroy()
 
     def center_window(w=300, h=200):
-        # Obtiene las dimensiones de la pantalla
         ws = root.winfo_screenwidth()
         hs = root.winfo_screenheight()
-        # Calcula la posición x, y
         x = (ws/2) - (w/2)
         y = (hs/2) - (h/2)
         root.geometry('%dx%d+%d+%d' % (w, h, x, y))
 
     custom_id = None
     pedido = None
+    mensajeria = None  # Nueva variable para almacenar la opción de mensajería
     root = tk.Tk()
-    center_window(500, 250)  # Centra la ventana en la pantalla
+    center_window(500, 300)  # Ajusta el tamaño de la ventana según tus necesidades
     root.title('Ingreso de pedido')
 
     tk.Label(root, text="Ingrese el número del pedido:", font=("Arial", 14, 'bold')).pack(pady=10)
@@ -76,16 +78,20 @@ def get_window_title():
     entry_id = tk.Entry(root, width=50, justify='center')
     entry_id.pack(pady=5)
 
+    tk.Label(root, text="Seleccione la opción de mensajería:", font=("Arial", 14, 'bold')).pack(pady=10)
+    combobox = ttk.Combobox(root, values=["Correo a domicilio", "Correo a Sucursal", "Mensajería"])
+    combobox.pack(pady=5)
+
     tk.Button(root, text="OK", command=on_ok).pack(pady=10)
-    
+
     root.mainloop()
 
     if pedido:
-        return f"Pedidos > {pedido} • Todomicro", custom_id
+        return f"Pedidos > {pedido} • Todomicro", custom_id, mensajeria  # Devuelve la opción de mensajería también
     else:
-        return None, None
+        return None, None, None  # Devuelve None para la opción de mensajería si no hay pedido
 
-title, custom_id = get_window_title()
+title, custom_id, mensajeria = get_window_title()  # Asegúrate de capturar la nueva variable 'mensajeria'
 
 def obtener_codigo_fuente_chrome(title):
     chrome_windows = gw.getWindowsWithTitle(title)
@@ -392,8 +398,10 @@ from reportlab.lib import colors
 from reportlab.graphics.barcode import code128
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.lib import colors
 import csv
 import qrcode
+import os
 
 def fetch_locations_from_sheet(spreadsheet_id):
     sheet_name = 'Ubicacion'
@@ -431,24 +439,35 @@ def read_shipping_data(filename):
         data = [row for row in reader]
     return data
 
-
 from PIL import Image
 
-def generate_shipping_label(order_number, datos, detalle, shipping_data, locations):
+def generate_shipping_label(order_number, datos, detalle, shipping_data, locations, mensajeria):
     c = canvas.Canvas(f"{order_number}_etiqueta_envio.pdf", pagesize=letter)
     width, height = letter
 
     # Encabezado
     c.setFont("Helvetica-Bold", 28)
-    c.drawCentredString(width / 2.0, height - 50, "TODOMICRO")  # Ajusta la posición vertical aquí
+    c.drawCentredString(width / 2.0, height - 50, "TODOMICRO")
+
+    # Dibujar la opción de mensajería seleccionada en negrita
+    c.setFont("Helvetica-Bold", 14)  # Cambia a "Helvetica-Bold" para que esté en negrita
+    c.drawCentredString(width / 4.5, height - 60, mensajeria)
+
+    # Línea divisoria
+    c.setStrokeColor(colors.black)
+    c.line(70, height - 70, width - 70, height - 70)
+
+    # "DATOS DEL CLIENTE" en mayúsculas y centrado
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(width / 2.0, height - 100, "DATOS DEL CLIENTE")
 
     # Datos del pedido (lado izquierdo)
     c.setFont("Helvetica", 12)
-    c.drawString(100, height - 200, f"ID: {datos[0][0]}")
-    c.drawString(100, height - 220, f"Información del Pedido: {datos[0][1]}")
-    c.drawString(100, height - 240, f"Cantidad: {datos[0][2]}")
-    c.drawString(100, height - 260, f"URL del Pedido: {datos[0][3]}")
-    c.drawString(100, height - 280, f"Destinatario: {datos[0][4]}")
+    c.drawString(100, height - 140, f"ID: {datos[0][0]}")
+    c.drawString(100, height - 160, f"Información del Pedido: {datos[0][1]}")
+    c.drawString(100, height - 180, f"Cantidad: {datos[0][2]}")
+    c.drawString(100, height - 200, f"URL del Pedido: {datos[0][3]}")
+    c.drawString(100, height - 220, f"Destinatario: {datos[0][4]}")
 
     # Generar código QR
     qr_code = qrcode.QRCode(
@@ -457,7 +476,6 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
         box_size=10,
         border=4,
     )
-    # Aquí, uso 'order_number' directamente para que el QR contenga solo ese número.
     qr_code.add_data(str({datos[0][1]}))
     qr_code.make(fit=True)
     img = qr_code.make_image(fill_color="black", back_color="white")
@@ -465,15 +483,27 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     # Guardar la imagen QR en un archivo temporal
     img.save("temp_qr.png")
 
-    # Dibuja la imagen QR directamente en el canvas del PDF
-    c.drawImage("temp_qr.png", width / 2 - 50, height - 180, 100, 100)  # Ajusta la posición aquí
+    # Dibuja la imagen QR en el margen superior derecho con una sangría de 50 unidades
+    margen_derecho = 50  # Ajusta este valor para cambiar la sangría
+    margen_superior = 20  # Espacio desde el borde superior
+    c.drawImage("temp_qr.png", width - 100 - margen_derecho, height - 100 - margen_superior, 100, 100)
 
     # Extraer el número de pedido de 'Información del Pedido'
     pedido = datos[0][1].split(": ")[1] if ": " in datos[0][1] else datos[0][1]
 
-    # Cuerpo
-    # Detalles del envío (lado izquierdo)
+    # Línea divisoria
+    c.line(70, height - 300, width - 70, height - 300)
+
+    # Inicializar y_position para evitar errores
     y_position = height - 340
+
+    # "DETALLES DEL ENVIO" en mayúsculas y centrado
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(width / 2.0, y_position, "DATOS DE ENVIO")
+    y_position -= 20
+
+    # Detalles del envío (lado izquierdo)
+    c.setFont("Helvetica", 12)
     c.drawString(100, y_position, f"Domicilio: {shipping_data[0][0]}")
     y_position -= 20
     c.drawString(100, y_position, f"CP: {shipping_data[0][1]}")
@@ -484,18 +514,27 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     y_position -= 20
     c.drawString(100, y_position, f"País: {shipping_data[0][4]}")
 
+
+    # Línea divisoria antes de "Detalles del Producto"
     y_position -= 40
-    c.drawString(100, y_position, "Detalles del Producto:")
+    c.setStrokeColor(colors.black)
+    c.line(70, y_position, width - 70, y_position)
     y_position -= 20
+
+    # "DETALLES DEL PRODUCTO" en mayúsculas y centrado
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(width / 2.0, y_position, "DETALLES DEL PRODUCTO")
+    y_position -= 20
+
+    # Cambiar la fuente de nuevo para los detalles
+    c.setFont("Helvetica", 12)
+
     for item in detalle:
         reference = item[0]
-        location = find_location(reference, locations)  # Usar la nueva función de búsqueda
-
+        location = find_location(reference, locations)
 
         # Intenta buscar de nuevo si la ubicación es 'N/A'
         if location == ('N/A', 'N/A'):
-            # Aquí podrías intentar buscar de nuevo la ubicación
-            # Por ejemplo, podrías llamar a una función que busque en otra hoja o en otra fuente de datos
             location = second_attempt_to_find_location(reference)
 
         c.drawString(100, y_position, f"Referencia: {reference}, Cantidad: {item[1]}, Ubicación: {location[0]} y {location[1]}")
@@ -506,14 +545,12 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     # Eliminar el archivo temporal de la imagen QR
     os.remove("temp_qr.png")
 
+
 # Puedes definir esta función para hacer una segunda búsqueda
 def second_attempt_to_find_location(reference):
     # Aquí podrías intentar buscar de nuevo la ubicación
     # Por ejemplo, podrías llamar a una función que busque en otra hoja o en otra fuente de datos
     return ('N/A', 'N/A')  # Devuelve 'N/A' si no se encuentra
-
-    # Eliminar el archivo temporal de la imagen QR
-    os.remove("temp_qr.png")
 
 # Obtener las ubicaciones de los productos desde Google Sheets
 locations = fetch_locations_from_sheet(SPREADSHEET_ID2)
@@ -521,5 +558,5 @@ locations = fetch_locations_from_sheet(SPREADSHEET_ID2)
 # Leer los datos de envío desde un archivo CSV
 shipping_data = read_shipping_data("datos_de_envio.csv")
 
-# Generar la etiqueta de envío
-generate_shipping_label(order_number, datos, detalle, shipping_data, locations)
+generate_shipping_label(order_number, datos, detalle, shipping_data, locations, mensajeria)
+
