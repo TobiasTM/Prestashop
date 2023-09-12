@@ -198,8 +198,17 @@ if html_content:
                 address_info = match.group(1)
                 print(f"Se encontró la dirección: {address_info}")
 
-                # Separa la información de la dirección en sus componentes
-                domicilio, cp, localidad, ciudad, pais = address_info.split(',')
+                # Dividir la cadena completa por comas
+                address_parts = address_info.split(',')
+
+                # Las últimas 4 partes son CP, localidad, ciudad y país
+                cp = address_parts[-4].strip()
+                localidad = address_parts[-3].strip()
+                ciudad = address_parts[-2].strip()
+                pais = address_parts[-1].strip()
+
+                # Todo lo que queda al principio es el domicilio
+                domicilio = ','.join(address_parts[:-4]).strip()
 
                 # Guarda en CSV
                 csv_file = 'datos_de_envio.csv'
@@ -210,8 +219,7 @@ if html_content:
                     writer = csv.writer(file)
                     if not file_exists:
                         writer.writerow(["Domicilio", "CP", "Localidad", "Ciudad", "País"])
-                    writer.writerow([domicilio.strip(), cp.strip(), localidad.strip(), ciudad.strip(), pais.strip()])
-
+                    writer.writerow([domicilio, cp, localidad, ciudad, pais])
 else:
     print("No se pudo obtener el contenido HTML.")
 
