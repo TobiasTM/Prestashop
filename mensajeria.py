@@ -207,8 +207,13 @@ if html_content:
                 ciudad = address_parts[-2].strip()
                 pais = address_parts[-1].strip()
 
-                # Todo lo que queda al principio es el domicilio
-                domicilio = ','.join(address_parts[:-4]).strip()
+                # Todo lo que queda al principio es el domicilio y la referencia
+                domicilio_and_ref = ','.join(address_parts[:-4]).strip()
+
+                # Separar el domicilio y la referencia
+                domicilio_parts = domicilio_and_ref.split(' - ', 1)
+                domicilio = domicilio_parts[0].strip()
+                referencia = ' - '.join(domicilio_parts[1:]).strip() if len(domicilio_parts) > 1 else 'N/A'
 
                 # Guarda en CSV
                 csv_file = 'datos_de_envio.csv'
@@ -218,10 +223,11 @@ if html_content:
                 with open(csv_file, mode='a', newline='', encoding='utf-8') as file:
                     writer = csv.writer(file)
                     if not file_exists:
-                        writer.writerow(["Domicilio", "CP", "Localidad", "Ciudad", "País"])
-                    writer.writerow([domicilio, cp, localidad, ciudad, pais])
+                        writer.writerow(["Domicilio", "Referencia de Entrega", "CP", "Localidad", "Ciudad", "País"])
+                    writer.writerow([domicilio, referencia, cp, localidad, ciudad, pais])
 else:
     print("No se pudo obtener el contenido HTML.")
+
 
 # Escribir detalles en el archivo CSV
 with open(detalle_filename, 'w', encoding='utf-8', newline='') as file:
@@ -510,17 +516,18 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     c.drawCentredString(width / 2.0, y_position, "DATOS DE ENVIO")
     y_position -= 20
 
-    # Detalles del envío (lado izquierdo)
     c.setFont("Helvetica", 12)
     c.drawString(100, y_position, f"Domicilio: {shipping_data[0][0]}")
     y_position -= 20
-    c.drawString(100, y_position, f"CP: {shipping_data[0][1]}")
+    c.drawString(100, y_position, f"Referencia de Entrega: {shipping_data[0][1]}")  # Asumiendo que el índice 5 contiene la referencia de entrega
     y_position -= 20
-    c.drawString(100, y_position, f"Localidad: {shipping_data[0][2]}")
+    c.drawString(100, y_position, f"CP: {shipping_data[0][2]}")
     y_position -= 20
-    c.drawString(100, y_position, f"Ciudad: {shipping_data[0][3]}")
+    c.drawString(100, y_position, f"Localidad: {shipping_data[0][3]}")
     y_position -= 20
-    c.drawString(100, y_position, f"País: {shipping_data[0][4]}")
+    c.drawString(100, y_position, f"Ciudad: {shipping_data[0][4]}")
+    y_position -= 20
+    c.drawString(100, y_position, f"País: {shipping_data[0][5]}")
 
 
     # Línea divisoria antes de "Detalles del Producto"
