@@ -544,6 +544,12 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     # Cambiar la fuente de nuevo para los detalles
     c.setFont("Helvetica", 12)
 
+    # Encabezados de las columnas
+    c.drawString(100, y_position, "Referencia")
+    c.drawString(300, y_position, "Cantidad")
+    c.drawString(400, y_position, "Ubicación")
+    y_position -= 20
+
     for item in detalle:
         reference = item[0]
         location = find_location(reference, locations)
@@ -552,7 +558,10 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
         if location == ('N/A', 'N/A'):
             location = second_attempt_to_find_location(reference)
 
-        c.drawString(100, y_position, f"Referencia: {reference}, Cantidad: {item[1]}, Ubicación: {location[0]} y {location[1]}")
+        # Dibujar cada detalle en su respectiva columna
+        c.drawString(100, y_position, f"{reference}")
+        c.drawString(300, y_position, f"{item[1]}")
+        c.drawString(400, y_position, f"{location[0]} y {location[1]}")
         y_position -= 20
 
     c.save()
@@ -574,4 +583,3 @@ locations = fetch_locations_from_sheet(SPREADSHEET_ID2)
 shipping_data = read_shipping_data("datos_de_envio.csv")
 
 generate_shipping_label(order_number, datos, detalle, shipping_data, locations, mensajeria)
-
