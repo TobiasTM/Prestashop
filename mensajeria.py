@@ -536,6 +536,7 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     c.line(70, y_position, width - 70, y_position)
     y_position -= 20
 
+
     # "DETALLES DEL PRODUCTO" en mayúsculas y centrado
     c.setFont("Helvetica-Bold", 14)
     c.drawCentredString(width / 2.0, y_position, "DETALLES DEL PRODUCTO")
@@ -549,6 +550,12 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
     c.drawString(300, y_position, "Cantidad")
     c.drawString(400, y_position, "Ubicación")
     y_position -= 20
+
+    # Dibujar líneas verticales para separar las columnas
+    c.setStrokeColor(colors.black)
+    c.line(90, y_position + 20, 90, y_position - 20 * len(detalle))
+    c.line(290, y_position + 20, 290, y_position - 20 * len(detalle))
+    c.line(390, y_position + 20, 390, y_position - 20 * len(detalle))
 
     for item in detalle:
         reference = item[0]
@@ -568,6 +575,7 @@ def generate_shipping_label(order_number, datos, detalle, shipping_data, locatio
 
     # Eliminar el archivo temporal de la imagen QR
     os.remove("temp_qr.png")
+
 
 
 # Puedes definir esta función para hacer una segunda búsqueda
